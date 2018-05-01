@@ -131,231 +131,13 @@ uint8_t font[128][8] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}   // U+007F
 };
 
-void drawEnSentence(uint16_t x, uint16_t y, char *character, uint8_t length,
-                    uint16_t color, uint16_t backColor) {
-  for (int j = 0; j < length; j++) {
-    drawEnWord(x + 9 * j, y, *(character + j), color);
-  }
-}
-
-void drawEnWord(uint16_t x, uint16_t y, char character, uint16_t color, uint16_t backColor) {
-  /* old version 
-  for (int i = 0; i < 8; i++) {
-    uint8_t nowlayerdots = font[character][i];
-    for (int n = 0; n < 8; n++) {
-      if ((nowlayerdots >> n) & 0x01) {
-        drawPoint(x + n, y + i, color);
-      }
-    }
-  }
-*/
-
-	uint8_t color_buffer[64];
-	for (int i = 0; i < 8; i++) {
-    uint8_t nowlayerdots = font[character][i];
-    for (int n = 0; n < 8; n++) {
-    	if ((nowlayerdots >> n) & 0x01) color_buffer[8*i+n] = color;
-			else color_buffer[8*i+n] = backColor;
-    }
-  }
-
-	writeCommand(ILI9341_CASET);
-  spiWrite16(x);
-  spiWrite16(x + 8 - 1);
-  writeCommand(ILI9341_PASET);
-  spiWrite16(y);
-  spiWrite16(y + 8 - 1);
-  writeCommand(ILI9341_RAMWR);
-	
-	HAL_SPI_Transmit(&hspi,(uint8_t *)charpic,8*8*2,10);
-}
-
-void drawCnSentence(uint16_t x, uint16_t y, char *character, uint8_t length,
-                    uint16_t color, uint16_t backColor) {
-  FRESULT res;
-  FIL file_obj;
-  res = f_open(&file_obj, fontLibraryPath, FA_OPEN_EXISTING | FA_READ);
-  if (res != FR_OK) {
-    return;
-  }
-
-  for (int j = 0; j < length; j += 2) {
-    if (*(character + j) <= 0x7f) {
-      drawEnWord(x + 9 * j, y + 4, *(character + j), color);
-      j--;
-    } else {
-      drawCnWord(x + 9 * j, y, (character + j), color,backColor, file_obj);
-    }
-  }
-}
-
-void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color, uint16_t backColor,
-                FIL file_obj) {
-  uint16_t buffer[16];
-	uint16_t charpic[16*16];
-  uint32_t br;
-  FRESULT res;
-
-  int offset = (94 * (unsigned int)(*character - 0xa0 - 1) +
-                (*(character + 1) - 0xa0 - 1)) *
-               32;
-
-  res = f_lseek(&file_obj, offset);
-  if (res != FR_OK) {
-		f_close(&file_obj);
-    return;
-  }
-
-  res = f_read(&file_obj, buffer, 32, &br);
-  if (res != FR_OK) {
-		f_close(&file_obj);
-    return;
-  }
-
-  for (int i = 0; i < 16; i++) {
-    uint8_t temp = 0;
-
-    temp = buffer[i] >> 8;
-
-    buffer[i] = (buffer[i] & 0xff) << 8 | temp;
-  }
-
-  for (int i = 0; i < 16; i++) {
-    for (int n = 0; n < 16; n++) {
-      if ((buffer[i] >> n) & 0x01) {
-        charpic[i*16+15-n]=color;
-      }else{
-				charpic[i*16+15-n]=backColor;
-			}
-    }
-  }
-	
-	writeCommand(ILI9341_CASET);
-  spiWrite16(x);
-  spiWrite16(x + 16 - 1);
-  writeCommand(ILI9341_PASET);
-  spiWrite16(y);
-  spiWrite16(y + 16 - 1);
-  writeCommand(ILI9341_RAMWR);
-	
-	HAL_SPI_Transmit(&hspi,(uint8_t *)charpic,16*16*2,10);
-}
-
-void drawCircul(uint16_t x, uint16_t y, uint16_t r, uint16_t color) {
-  uint16_t length = 0;
-  uint16_t distenchtopoint = r;
-  while (length < distenchtopoint) {
-    length = (int)sqrt((double)(r * r - distenchtopoint * distenchtopoint));
-    drawLine(x - length, y - distenchtopoint, x + length, y - distenchtopoint,
-             color);
-    drawLine(x - length, y + distenchtopoint, x + length, y + distenchtopoint,
-             color);
-    drawLine(x + distenchtopoint, y - length, x + distenchtopoint, y + length,
-             color);
-    drawLine(x - distenchtopoint, y - length, x - distenchtopoint, y + length,
-             color);
-    distenchtopoint--;
-  }
-  drawRectangle(x - distenchtopoint, y - distenchtopoint,
-                2 * distenchtopoint + 1, 2 * distenchtopoint + 1, color);
-}
-
-void drawRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
-                   uint16_t color) {
-  writeCommand(ILI9341_CASET);
-  spiWrite16(x);
-  spiWrite16(x + w - 1);
-  writeCommand(ILI9341_PASET);
-  spiWrite16(y);
-  spiWrite16(y + h - 1);
-  writeCommand(ILI9341_RAMWR);
-  int i;
-	uint16_t bufferSize;
-	if(w*h>256)
-		bufferSize=512;
-	else
-		bufferSize=w*h*2;
-  uint8_t data_16bit[bufferSize];
-  for (i = 0; i < bufferSize; i += 2) {
-    data_16bit[i + 0] = (color) >> 8;
-    data_16bit[i + 1] = (color)&0x00ff;
-  }
-
-  HAL_SPI_Transmit(&hspi, data_16bit, 2, 2);
-
-  for (i = 0; w * h - i > bufferSize/2; i += bufferSize/2) {
-    HAL_SPI_Transmit(&hspi, data_16bit, bufferSize, 50);
-  }
-
-  HAL_SPI_Transmit(&hspi, data_16bit, 2 * (w * h - i), 50);
-}
-
-void drawPoint(uint16_t x, uint16_t y, uint16_t color) {
-  drawRectangle(x, y, 1, 1, color);
-}
-
-void drawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2,
-              uint16_t color) {
-  if (x1 == x2) {
-    drawRectangle(x1, y1, 1, y2 - y1 + 1, color);
-  } else if (y1 == y2) {
-    drawRectangle(x1, y1, x2 - x1 + 1, 1, color);
-  } else if (x2 - x1 > 0 && y2 - y1 > 0) {
-    uint16_t xnow = x1;
-    uint16_t ynow = y1;
-    while (xnow != x2 || ynow != y2) {
-      drawPoint(xnow, ynow, color);
-      if ((x2 - xnow) * (y2 - y1) >= (y2 - ynow) * (x2 - x1)) {
-        xnow++;
-      } else {
-        ynow++;
-      }
-    }
-  } else if (x2 - x1 < 0 && y2 - y1 < 0) {
-    uint16_t temp;
-    temp = x2;
-    x2 = x1;
-    x1 = temp;
-    temp = y2;
-    y2 = y1;
-    y1 = temp;
-    uint16_t xnow = x1;
-    uint16_t ynow = y1;
-    while (xnow != x2 || ynow != y2) {
-      drawPoint(xnow, ynow, color);
-      if ((x2 - xnow) * (y2 - y1) >= (y2 - ynow) * (x2 - x1)) {
-        xnow++;
-      } else {
-        ynow++;
-      }
-    }
-  } else if (x2 - x1 > 0 && y2 - y1 < 0) {
-    uint16_t xnow = x1;
-    uint16_t ynow = y1;
-    while (xnow != x2 || ynow != y2) {
-      drawPoint(xnow, ynow, color);
-      if ((x2 - xnow) * (y2 - y1) <= (y2 - ynow) * (x2 - x1)) {
-        xnow++;
-      } else {
-        ynow--;
-      }
-    }
-  } else if (x2 - x1 < 0 && y2 - y1 > 0) {
-    uint16_t xnow = x1;
-    uint16_t ynow = y1;
-    while (xnow != x2 || ynow != y2) {
-      drawPoint(xnow, ynow, color);
-      if ((x2 - xnow) * (y2 - y1) <= (y2 - ynow) * (x2 - x1)) {
-        xnow--;
-      } else {
-        ynow++;
-      }
-    }
-  }
-}
-
 void lcdInit() {
   srand(RAND_SEED);
+
+	FRESULT res = f_open(&fontLibrary, fontLibraryPath, FA_OPEN_EXISTING | FA_READ);
+  if (res != FR_OK) {
+    return;
+  }
 
   writeCommand(0xEF);
   spiWrite(0x03);
@@ -492,7 +274,227 @@ void lcdRestart(void) {
   HAL_Delay(200);
 }
 
-void drawPictu(uint16_t x, uint16_t y, const char *path) {
+void drawEnSentence(uint16_t x, uint16_t y, char *character, uint8_t length,
+                    uint16_t color, uint16_t backColor) {
+  for (int j = 0; j < length; j++) {
+    drawEnWord(x + 9 * j, y, *(character + j), color);
+  }
+}
+
+void drawEnWord(uint16_t x, uint16_t y, char character, uint16_t color,
+                uint16_t backColor) {
+  /* old version
+  for (int i = 0; i < 8; i++) {
+    uint8_t nowlayerdots = font[character][i];
+    for (int n = 0; n < 8; n++) {
+      if ((nowlayerdots >> n) & 0x01) {
+        drawPoint(x + n, y + i, color);
+      }
+    }
+  }
+*/
+
+  uint8_t color_buffer[64];
+  for (int i = 0; i < 8; i++) {
+    uint8_t nowlayerdots = font[character][i];
+    for (int n = 0; n < 8; n++) {
+      if ((nowlayerdots >> n) & 0x01)
+        color_buffer[8 * i + n] = color;
+      else
+        color_buffer[8 * i + n] = backColor;
+    }
+  }
+
+  writeCommand(ILI9341_CASET);
+  spiWrite16(x);
+  spiWrite16(x + 8 - 1);
+  writeCommand(ILI9341_PASET);
+  spiWrite16(y);
+  spiWrite16(y + 8 - 1);
+  writeCommand(ILI9341_RAMWR);
+
+  HAL_SPI_Transmit(&hspi, (uint8_t *)charpic, 8 * 8 * 2, 10);
+}
+
+void drawCnSentence(uint16_t x, uint16_t y, char *character, uint8_t length,
+                    uint16_t color, uint16_t backColor) {
+  for (int j = 0; j < length; j += 2) {
+    if (*(character + j) <= 0x7f) {
+      drawEnWord(x + 9 * j, y + 4, *(character + j), color);
+      j--;
+    } else {
+      drawCnWord(x + 9 * j, y, (character + j), color, backColor);
+    }
+  }
+}
+
+void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color,
+                uint16_t backColor) {
+  uint16_t buffer[16];
+  uint16_t charpic[16 * 16];
+  uint32_t br;
+  FRESULT res;
+
+  int offset = (94 * (unsigned int)(*character - 0xa0 - 1) +
+                (*(character + 1) - 0xa0 - 1)) *
+               32;
+
+  res = f_lseek(&fontLibrary, offset);
+  if (res != FR_OK) {
+    f_close(&fontLibrary);
+    return;
+  }
+
+  res = f_read(&fontLibrary, buffer, 32, &br);
+  if (res != FR_OK) {
+    f_close(&fontLibrary);
+    return;
+  }
+
+  for (int i = 0; i < 16; i++) {
+    uint8_t temp = 0;
+
+    temp = buffer[i] >> 8;
+
+    buffer[i] = (buffer[i] & 0xff) << 8 | temp;
+  }
+
+  for (int i = 0; i < 16; i++) {
+    for (int n = 0; n < 16; n++) {
+      if ((buffer[i] >> n) & 0x01) {
+        charpic[i * 16 + 15 - n] = color;
+      } else {
+        charpic[i * 16 + 15 - n] = backColor;
+      }
+    }
+  }
+
+  writeCommand(ILI9341_CASET);
+  spiWrite16(x);
+  spiWrite16(x + 16 - 1);
+  writeCommand(ILI9341_PASET);
+  spiWrite16(y);
+  spiWrite16(y + 16 - 1);
+  writeCommand(ILI9341_RAMWR);
+
+  HAL_SPI_Transmit(&hspi, (uint8_t *)charpic, 16 * 16 * 2, 10);
+}
+
+void drawCircul(uint16_t x, uint16_t y, uint16_t r, uint16_t color) {
+  uint16_t length = 0;
+  uint16_t distenceToPoint = r;
+  while (length < distenceToPoint) {
+    length = (int)sqrt((double)(r * r - distenceToPoint * distenceToPoint));
+    drawLine(x - length, y - distenceToPoint, x + length, y - distenceToPoint,
+             color);
+    drawLine(x - length, y + distenceToPoint, x + length, y + distenceToPoint,
+             color);
+    drawLine(x + distenceToPoint, y - length, x + distenceToPoint, y + length,
+             color);
+    drawLine(x - distenceToPoint, y - length, x - distenceToPoint, y + length,
+             color);
+    distenceToPoint--;
+  }
+  drawRectangle(x - distenceToPoint, y - distenceToPoint,
+                2 * distenceToPoint + 1, 2 * distenceToPoint + 1, color);
+}
+
+void drawRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
+                   uint16_t color) {
+  writeCommand(ILI9341_CASET);
+  spiWrite16(x);
+  spiWrite16(x + w - 1);
+  writeCommand(ILI9341_PASET);
+  spiWrite16(y);
+  spiWrite16(y + h - 1);
+  writeCommand(ILI9341_RAMWR);
+  int i;
+  uint16_t bufferSize;
+  if (w * h > 256)
+    bufferSize = 512;
+  else
+    bufferSize = w * h * 2;
+  uint8_t data_16bit[bufferSize];
+  for (i = 0; i < bufferSize; i += 2) {
+    data_16bit[i + 0] = (color) >> 8;
+    data_16bit[i + 1] = (color)&0x00ff;
+  }
+
+  HAL_SPI_Transmit(&hspi, data_16bit, 2, 2);
+
+  for (i = 0; w * h - i > bufferSize / 2; i += bufferSize / 2) {
+    HAL_SPI_Transmit(&hspi, data_16bit, bufferSize, 50);
+  }
+
+  HAL_SPI_Transmit(&hspi, data_16bit, 2 * (w * h - i), 50);
+}
+
+//! not recommend to use this function directly.
+void drawPoint(uint16_t x, uint16_t y, uint16_t color) {
+  drawRectangle(x, y, 1, 1, color);
+}
+
+void drawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2,
+              uint16_t color) {
+  if (x1 == x2) {
+    drawRectangle(x1, y1, 1, y2 - y1 + 1, color);
+  } else if (y1 == y2) {
+    drawRectangle(x1, y1, x2 - x1 + 1, 1, color);
+  } else if (x2 - x1 > 0 && y2 - y1 > 0) {
+    uint16_t xnow = x1;
+    uint16_t ynow = y1;
+    while (xnow != x2 || ynow != y2) {
+      drawPoint(xnow, ynow, color);
+      if ((x2 - xnow) * (y2 - y1) >= (y2 - ynow) * (x2 - x1)) {
+        xnow++;
+      } else {
+        ynow++;
+      }
+    }
+  } else if (x2 - x1 < 0 && y2 - y1 < 0) {
+    uint16_t temp;
+    temp = x2;
+    x2 = x1;
+    x1 = temp;
+    temp = y2;
+    y2 = y1;
+    y1 = temp;
+    uint16_t xnow = x1;
+    uint16_t ynow = y1;
+    while (xnow != x2 || ynow != y2) {
+      drawPoint(xnow, ynow, color);
+      if ((x2 - xnow) * (y2 - y1) >= (y2 - ynow) * (x2 - x1)) {
+        xnow++;
+      } else {
+        ynow++;
+      }
+    }
+  } else if (x2 - x1 > 0 && y2 - y1 < 0) {
+    uint16_t xnow = x1;
+    uint16_t ynow = y1;
+    while (xnow != x2 || ynow != y2) {
+      drawPoint(xnow, ynow, color);
+      if ((x2 - xnow) * (y2 - y1) <= (y2 - ynow) * (x2 - x1)) {
+        xnow++;
+      } else {
+        ynow--;
+      }
+    }
+  } else if (x2 - x1 < 0 && y2 - y1 > 0) {
+    uint16_t xnow = x1;
+    uint16_t ynow = y1;
+    while (xnow != x2 || ynow != y2) {
+      drawPoint(xnow, ynow, color);
+      if ((x2 - xnow) * (y2 - y1) <= (y2 - ynow) * (x2 - x1)) {
+        xnow--;
+      } else {
+        ynow++;
+      }
+    }
+  }
+}
+
+void drawPicture(uint16_t x, uint16_t y, const char *path) {
   FRESULT res;
   FIL file_obj;
 

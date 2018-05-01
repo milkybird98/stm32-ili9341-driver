@@ -91,12 +91,14 @@ typedef struct BITMAP_HEADER{
     uint32_t biClrImportant;
 }BITMAP_HEADER;
 
+FIL fontLibrary;
+
 extern void lcdInit(void);
 extern void lcdRestart(void);
 extern void writeCommand(uint8_t cmd);
 extern void spiWrite(uint8_t data);
 extern void spiWrite16(uint16_t data);
-extern void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color, uint16_t backcolor, FIL file_ogj);
+extern void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color, uint16_t backcolor);
 extern void drawCnSentence(uint16_t x,uint16_t y,char *character,uint8_t length,uint16_t color, uint16_t backcolor);
 extern void drawEnWord(uint16_t x, uint16_t y, char character, uint16_t color);
 extern void drawEnSentence(uint16_t x,uint16_t y,char *character,uint8_t length,uint16_t color, uint16_t backcolor);
@@ -104,7 +106,7 @@ extern void drawRectangle(uint16_t x,uint16_t y,uint16_t w,uint16_t h,uint16_t c
 extern void drawPoint(uint16_t x,uint16_t y,uint16_t color);
 extern void drawLine(uint16_t x,uint16_t y,uint16_t x2,uint16_t y2,uint16_t color);
 extern void drawCircul(uint16_t x,uint16_t y,uint16_t r,uint16_t color);
-extern void drawPictu(uint16_t x,uint16_t y,const char *path);
+extern void drawPicture(uint16_t x,uint16_t y,const char *path);
 
 extern uint16_t RGB(uint8_t r, uint8_t g, uint8_t b);
 extern uint16_t getrRGB(void);
