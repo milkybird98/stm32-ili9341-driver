@@ -547,6 +547,8 @@ void drawPicture(uint16_t x, uint16_t y, const char *path) {
   uint16_t lenToLef = x;
   uint8_t Blue, Red, Green;
   switch (fileHead.biBitCount) {
+		/* not fininesed */
+		/*
     case 24: {
       const uint16_t BUFFER_SIZE = fileHead.biWidth * 3 * 12;
       uint8_t bmpBuffer[BUFFER_SIZE];
@@ -560,6 +562,7 @@ void drawPicture(uint16_t x, uint16_t y, const char *path) {
         if (br == 0) {
           break;
         }
+
         for (int n = 0; n < br / (fileHead.biWidth * 3); n++) {
           writeCommand(ILI9341_CASET);
           spiWrite16(lenToLef);
@@ -585,6 +588,7 @@ void drawPicture(uint16_t x, uint16_t y, const char *path) {
       }
       break;
     }
+		*/
     case 32: {
       const uint16_t BUFFER_SIZE = fileHead.biWidth * 4;
       uint8_t bmpBuffer[BUFFER_SIZE];
@@ -633,11 +637,5 @@ uint16_t RGB(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 uint16_t getrRGB(void) {
-  /*
-  int red=rand()%31;
-  int green=rand()%63;
-  int blue=rand()%31;
-  return (blue&0x1f)|((green&0x3f)<<5)|((blue&0x1f)<<(5+6));
-  */
   return rand() % 0xffff;
 }
