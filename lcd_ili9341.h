@@ -4,9 +4,14 @@
 #include "stdlib.h"
 #include "math.h"
 #include "ctype.h"
-#include "stm32f4xx_hal.h"
-#include "fatfs.h"
 #include "string.h"
+
+/* Setting Area */
+#include "stm32f4xx_hal.h" // This should be modified according to the device you use.
+#include "fatfs.h" // like the last one.
+extern SPI_HandleTypeDef hspi2; // this depends on the spi port you use.
+SPI_HandleTypeDef hspi = hspi2; // don't forget to change this.
+char *fontLibraryPath = "0:/hzk16h";
 
 #define ILI9341_TFTWIDTH   240
 #define ILI9341_TFTHEIGHT  320
@@ -86,8 +91,6 @@ typedef struct BITMAP_HEADER{
     uint32_t biClrImportant;
 }BITMAP_HEADER;
 
-extern SPI_HandleTypeDef hspi2;
-
 extern void lcdInit(void);
 extern void lcdRestart(void);
 extern void writeCommand(uint8_t cmd);
@@ -96,8 +99,8 @@ extern void spiWrite16(uint16_t data);
 extern void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color, uint16_t backcolor, FIL file_ogj);
 extern void drawCnSentence(uint16_t x,uint16_t y,char *character,uint8_t length,uint16_t color, uint16_t backcolor);
 extern void drawEnWord(uint16_t x, uint16_t y, char character, uint16_t color);
-extern void drawEnSentence(uint16_t x,uint16_t y,char *character,uint8_t length,uint16_t color);
-extern void drawRectangle(uint16_t x,uint16_t y,uint16_t w,uint16_t h,uint16_t color);
+extern void drawEnSentence(uint16_t x,uint16_t y,char *character,uint8_t length,uint16_t color, uint16_t backcolor);
+extern void drawRectangle(uint16_t x,uint16_t y,uint16_t w,uint16_t h,uint16_t color, uint16_t backcolor);
 extern void drawPoint(uint16_t x,uint16_t y,uint16_t color);
 extern void drawLine(uint16_t x,uint16_t y,uint16_t x2,uint16_t y2,uint16_t color);
 extern void drawCircul(uint16_t x,uint16_t y,uint16_t r,uint16_t color);

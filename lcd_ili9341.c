@@ -132,13 +132,14 @@ uint8_t font[128][8] = {
 };
 
 void drawEnSentence(uint16_t x, uint16_t y, char *character, uint8_t length,
-                    uint16_t color) {
+                    uint16_t color, uint16_t backColor) {
   for (int j = 0; j < length; j++) {
     drawEnWord(x + 9 * j, y, *(character + j), color);
   }
 }
 
-void drawEnWord(uint16_t x, uint16_t y, char character, uint16_t color) {
+void drawEnWord(uint16_t x, uint16_t y, char character, uint16_t color, uint16_t backColor) {
+  /* old version 
   for (int i = 0; i < 8; i++) {
     uint8_t nowlayerdots = font[character][i];
     for (int n = 0; n < 8; n++) {
@@ -147,13 +148,33 @@ void drawEnWord(uint16_t x, uint16_t y, char character, uint16_t color) {
       }
     }
   }
+*/
+
+	uint8_t color_buffer[64];
+	for (int i = 0; i < 8; i++) {
+    uint8_t nowlayerdots = font[character][i];
+    for (int n = 0; n < 8; n++) {
+    	if ((nowlayerdots >> n) & 0x01) color_buffer[8*i+n] = color;
+			else color_buffer[8*i+n] = backColor;
+    }
+  }
+
+	writeCommand(ILI9341_CASET);
+  spiWrite16(x);
+  spiWrite16(x + 8 - 1);
+  writeCommand(ILI9341_PASET);
+  spiWrite16(y);
+  spiWrite16(y + 8 - 1);
+  writeCommand(ILI9341_RAMWR);
+	
+	HAL_SPI_Transmit(&hspi,(uint8_t *)charpic,8*8*2,10);
 }
 
 void drawCnSentence(uint16_t x, uint16_t y, char *character, uint8_t length,
-                    uint16_t color, uint16_t backcolor) {
+                    uint16_t color, uint16_t backColor) {
   FRESULT res;
   FIL file_obj;
-  res = f_open(&file_obj, "0:/hzk16h", FA_OPEN_EXISTING | FA_READ);
+  res = f_open(&file_obj, fontLibraryPath, FA_OPEN_EXISTING | FA_READ);
   if (res != FR_OK) {
     return;
   }
@@ -163,12 +184,12 @@ void drawCnSentence(uint16_t x, uint16_t y, char *character, uint8_t length,
       drawEnWord(x + 9 * j, y + 4, *(character + j), color);
       j--;
     } else {
-      drawCnWord(x + 9 * j, y, (character + j), color,backcolor, file_obj);
+      drawCnWord(x + 9 * j, y, (character + j), color,backColor, file_obj);
     }
   }
 }
 
-void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color, uint16_t backcolor,
+void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color, uint16_t backColor,
                 FIL file_obj) {
   uint16_t buffer[16];
 	uint16_t charpic[16*16];
@@ -204,7 +225,7 @@ void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color, uint16_
       if ((buffer[i] >> n) & 0x01) {
         charpic[i*16+15-n]=color;
       }else{
-				charpic[i*16+15-n]=backcolor;
+				charpic[i*16+15-n]=backColor;
 			}
     }
   }
@@ -217,7 +238,7 @@ void drawCnWord(uint16_t x, uint16_t y, char *character, uint16_t color, uint16_
   spiWrite16(y + 16 - 1);
   writeCommand(ILI9341_RAMWR);
 	
-	HAL_SPI_Transmit(&hspi2,(uint8_t *)charpic,16*16*2,10);
+	HAL_SPI_Transmit(&hspi,(uint8_t *)charpic,16*16*2,10);
 }
 
 void drawCircul(uint16_t x, uint16_t y, uint16_t r, uint16_t color) {
@@ -260,13 +281,13 @@ void drawRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
     data_16bit[i + 1] = (color)&0x00ff;
   }
 
-  HAL_SPI_Transmit(&hspi2, data_16bit, 2, 2);
+  HAL_SPI_Transmit(&hspi, data_16bit, 2, 2);
 
   for (i = 0; w * h - i > bufferSize/2; i += bufferSize/2) {
-    HAL_SPI_Transmit(&hspi2, data_16bit, bufferSize, 50);
+    HAL_SPI_Transmit(&hspi, data_16bit, bufferSize, 50);
   }
 
-  HAL_SPI_Transmit(&hspi2, data_16bit, 2 * (w * h - i), 50);
+  HAL_SPI_Transmit(&hspi, data_16bit, 2 * (w * h - i), 50);
 }
 
 void drawPoint(uint16_t x, uint16_t y, uint16_t color) {
@@ -451,15 +472,15 @@ void lcdInit() {
 
 void writeCommand(uint8_t cmd) {
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
-  HAL_SPI_Transmit(&hspi2, &cmd, 1, 2);
+  HAL_SPI_Transmit(&hspi, &cmd, 1, 2);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
 }
 
-void spiWrite(uint8_t data) { HAL_SPI_Transmit(&hspi2, &data, 1, 2); }
+void spiWrite(uint8_t data) { HAL_SPI_Transmit(&hspi, &data, 1, 2); }
 
 void spiWrite16(uint16_t data) {
   uint8_t bit8data[2] = {(data) >> 8, (data)&0x00ff};
-  HAL_SPI_Transmit(&hspi2, bit8data, 2, 2);
+  HAL_SPI_Transmit(&hspi, bit8data, 2, 2);
 }
 
 void lcdRestart(void) {
@@ -556,7 +577,7 @@ void drawPictu(uint16_t x, uint16_t y, const char *path) {
             temp = bmpColor[i / 3] >> 8;
             bmpColor[i / 3] = (bmpColor[i / 3] & 0xff) << 8 | temp;
           }
-          HAL_SPI_Transmit(&hspi2, (uint8_t *)bmpColor, originBiWidth * 2, 20);
+          HAL_SPI_Transmit(&hspi, (uint8_t *)bmpColor, originBiWidth * 2, 20);
           lenToTop--;
         }
       }
@@ -595,7 +616,7 @@ void drawPictu(uint16_t x, uint16_t y, const char *path) {
           temp = bmpColor[i / 4] >> 8;
           bmpColor[i / 4] = (bmpColor[i / 4] & 0xff) << 8 | temp;
         }
-        HAL_SPI_Transmit(&hspi2, (uint8_t *)bmpColor, originBiWidth * 2, 20);
+        HAL_SPI_Transmit(&hspi, (uint8_t *)bmpColor, originBiWidth * 2, 20);
         lenToTop--;
         break;
       }
